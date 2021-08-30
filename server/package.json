@@ -1,0 +1,19 @@
+{
+  "name": "bsq-crash-reporter-web",
+  "version": "1.0.0",
+  "description": "bsq-crash-reporter web service",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://git.heroku.com/bsq-crash-reporter.git"
+  },
+  "author": "danrouse#0214",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.17.1",
+    "express-fileupload": "^1.2.1"
+  }
+}

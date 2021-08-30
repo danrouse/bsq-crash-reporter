@@ -1,0 +1,25 @@
+{
+  "configurations": [
+    {
+      "defines": [
+        "ID=\"crash-reporter\"",
+        "VERSION=\"0.1.0\"",
+        "__GNUC__",
+        "__aarch64__"
+      ],
+      "includePath": [
+        "${workspaceFolder}/qmod/**",
+        "${workspaceFolder}/qmod/shared",
+        "${workspaceFolder}/qmod/include",
+        "${workspaceFolder}/qmod/extern/**",
+        "${workspaceFolder}/qmod/extern/libil2cpp/il2cpp/libil2cpp",
+        "c:/dev/android-ndk-r22b/**"
+      ],
+      "name": "Quest",
+      "cStandard": "c11",
+      "cppStandard": "c++20",
+      "intelliSenseMode": "clang-x64"
+    }
+  ],
+  "version": 4
+}
