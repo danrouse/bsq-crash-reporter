@@ -77,9 +77,17 @@ app.get('/tombstones/:id', cacheMiddleware, async (req, res) => {
       time: new Date(data.time).toISOString(),
       backtrace: uncompressedLog,
       memoryRefs: data.memoryRefs.map((libName, i) =>
-        renderTemplate('tombstoneModItem', { libName, buildId: data.memoryRefIds[i] })).join(''),
+        renderTemplate('tombstoneModItem', {
+          libName,
+          buildId: data.memoryRefIds[i],
+          searchType: 'libs',
+        })).join(''),
       backtraceRefs: data.backtraceRefs.map((libName, i) =>
-        renderTemplate('tombstoneModItem', { libName, buildId: data.backtraceRefIds[i] })).join(''),
+        renderTemplate('tombstoneModItem', {
+          libName,
+          buildId: data.backtraceRefIds[i],
+          searchType: 'backtraces',
+        })).join(''),
     })
   );
 });
@@ -96,7 +104,7 @@ function renderSearchResultsPage(query, search, searchType) {
         const timestamp = new Date(data.time).toISOString();
         return renderTemplate('listingItem', {
           id: data.readableId,
-          buildId: data[`${search}RefIds`][buildIdIndex],
+          buildId: data[`${searchType}RefIds`][buildIdIndex],
           time: timestamp,
         });
       }).join(''),
