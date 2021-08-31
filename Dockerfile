@@ -13,7 +13,7 @@ ADD debug-libs /usr/src/debug-libs
 WORKDIR /usr/src/app
 
 # Cache npm packages in a separate layer
-ADD package*.json ./
+ADD server/package*.json ./
 RUN npm install
 
 ADD server ./
