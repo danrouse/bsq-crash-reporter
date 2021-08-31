@@ -45,7 +45,14 @@ extern "C" void setup(ModInfo& info) {
     if (!latestKnownTombstoneTime || latestTombstoneTime > latestKnownTombstoneTime) {
         getLogger().info("A new tombstone was detected, a crash report dialog will be shown");
         hasNewTombstone = true;
-    }    
+    }
+
+    // TODO: This is just for testing the server!
+    uploadCrashLog(latestTombstonePath.c_str(), []() {
+        getLogger().debug("Log uploaded successfully!");
+    }, [](const char* msg) {
+        getLogger().debug("Failed to upload log: %s", msg);
+    });
 }
 
 // TODO: Confirm if this is actually not a terrible place to hook the main menu

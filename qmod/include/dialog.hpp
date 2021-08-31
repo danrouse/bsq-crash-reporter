@@ -7,3 +7,8 @@
 #include "logger.hpp"
 
 void showCrashReportDialog(const char* tombstonePath);
+void uploadCrashLog(
+    const char* tombstonePath,
+    std::function<void()> onSuccess,
+    std::function<void(const char* errorMessage)> onFailure
+);

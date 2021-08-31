@@ -4,7 +4,8 @@
   "description": "bsq-crash-reporter web service",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "start-dev": "nodemon --legacy-watch server.js"
   },
   "repository": {
     "type": "git",
@@ -13,7 +14,11 @@
   "author": "danrouse#0214",
   "license": "MIT",
   "dependencies": {
+    "@google-cloud/firestore": "^4.15.0",
     "express": "^4.17.1",
     "express-fileupload": "^1.2.1"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.12"
   }
 }

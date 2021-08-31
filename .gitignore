@@ -1,1 +1,4 @@
 **/node_modules
+*.txt
+firestore-key.json
+tombstone_0*

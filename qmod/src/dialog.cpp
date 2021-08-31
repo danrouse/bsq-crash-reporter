@@ -1,43 +1,36 @@
 #include "dialog.hpp"
 
 // TODO: Is there a way to inject the host URI at build-time?
-const char* TOMBSTONE_POST_URL = "http://192.168.1.16:3000/upload";
+const char* TOMBSTONE_POST_URL = "http://34.74.215.247/upload";
 
-void uploadCrashLog(const char* tombstonePath) {
-    getLogger().debug("upload crash log %s", tombstonePath);
-
-    auto *curl = curl_easy_init();
+void uploadCrashLog(
+    const char* tombstonePath,
+    std::function<void()> onSuccess,
+    std::function<void(const char* errorMessage)> onFailure
+) {
+    auto curl = curl_easy_init();
     auto form = curl_mime_init(curl);
 
     auto field = curl_mime_addpart(form);
     curl_mime_name(field, "tombstone");
     curl_mime_filedata(field, tombstonePath);
 
-    // TODO: Include real metadata with the request
-    // - List of running mods (not exactly same as at crash time, but better than nothing)
-    // - Hardware identifier (UnityEngine.SystemInfo.deviceUniqueIdentifier seems to be stripped?)
-
-    // field = curl_mime_addpart(form);
-    // curl_mime_name(field, "some-metadata");
-    // curl_mime_data(field, "some value", CURL_ZERO_TERMINATED);
-
-    struct curl_slist *headerlist = NULL;
-    static const char buf[] = "Expect:";
-    headerlist = curl_slist_append(headerlist, buf);
+    struct curl_slist* headers = NULL;
+    headers = curl_slist_append(headers, "Expect:");
     curl_easy_setopt(curl, CURLOPT_URL, TOMBSTONE_POST_URL);
-    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headerlist);
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
     curl_easy_setopt(curl, CURLOPT_MIMEPOST, form);
 
     CURLcode res = curl_easy_perform(curl);
-    if (res != CURLE_OK) {
-        getLogger().debug("cURL error: %s", curl_easy_strerror(res));
-    } else {
-        getLogger().debug("curl request OK");
-    }
-
     curl_easy_cleanup(curl);
     curl_mime_free(form);
-    curl_slist_free_all(headerlist);
+    curl_slist_free_all(headers);
+
+    if (res != CURLE_OK) {
+        onFailure(curl_easy_strerror(res));
+    } else {
+        onSuccess();
+    }
 }
 
 void showCrashReportDialog(const char* tombstonePath) {
@@ -64,9 +57,13 @@ void showCrashReportDialog(const char* tombstonePath) {
         "Send Error Report",
         UnityEngine::Vector2(-20.0f, -10.0f),
         [tombstonePath, container]() {
-            uploadCrashLog(tombstonePath);
-            // TODO: Actually destroy the container when not in development
-            // UnityEngine::Object::Destroy(container);
+            uploadCrashLog(tombstonePath, [container]() {
+                getLogger().info("Tombstone uploaded successfully");
+                // UnityEngine::Object::Destroy(container);
+            }, [container](const char* errorMessage) {
+                getLogger().info("Web request failed with error: %s", errorMessage);
+                // UnityEngine::Object::Destroy(container);
+            });            
         }
     );
 
