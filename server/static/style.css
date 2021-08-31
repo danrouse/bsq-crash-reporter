@@ -1,0 +1,117 @@
+@import url('https://fonts.googleapis.com/css2?family=Teko:wght@400&display=swap');
+:root {
+  --white: #fcfcfc;
+  --black: #111111;
+  --light-blue: #2775b1;
+  --dark-blue: #1b4b6f;
+  --light-navy: #213645;
+  --dark-navy: #071521;
+  --light-red: #c33c49;
+  --dark-red: #611d26;
+  --gradient-blue: linear-gradient(90deg, var(--light-blue), var(--dark-blue) 100%);
+  --gradient-navy: linear-gradient(90deg, var(--light-navy), var(--dark-navy) 100%);
+  --gradient-red: linear-gradient(90deg, var(--light-red), var(--dark-red) 100%);
+}
+
+body {
+  margin: 0;
+  font-family: Verdana,Geneva,sans-serif;
+  background-color: var(--light-blue);
+  background-image: var(--gradient-blue);
+  color: var(--white);
+}
+a { 
+  color: var(--white);
+  text-decoration: none;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.8);
+}
+a:hover {
+  color: var(--dark-navy);
+  border-color: var(--dark-navy);
+}
+h1, h2, h3 {
+  font-family: 'Teko';
+  line-height: 1.2;
+  font-style: italic;
+  font-weight: 400;
+  margin: 0;
+  text-shadow: 0.05em 0.05em 0px var(--black);
+}
+h1 {
+  padding: 4px 16px;
+  font-size: 24px;
+  background-image: var(--gradient-navy);
+  color: var(--white);
+  border-bottom: 4px solid var(--dark-navy);
+}
+h2 {
+  background-image: var(--gradient-red);
+  font-size: 48px;
+  padding: 8px 16px;
+  text-align: center;
+  border-bottom: 4px solid var(--dark-red);
+}
+h3 {
+  text-align: center;
+  padding: 8px;
+  font-size: 32px;
+}
+.search-results {
+  padding: 0 20%;
+}
+.token {
+  background-color: var(--dark-navy);
+  padding: 4px 8px;
+}
+ul {
+  list-style: square;
+  line-height: 1.5;
+}
+.smol {
+  font-size: 80%;
+  opacity: 0.8;
+  font-style: italic;
+  vertical-align: top;
+}
+.smol:before { content: '('; }
+.smol:after { content: ')'; }
+.meta {
+  background-image: var(--gradient-navy);
+  margin: 0;
+  padding: 4px;
+  text-align: center;
+  border-bottom: 4px solid var(--dark-navy);
+}
+.references {
+  display: flex;
+  border-bottom: 4px solid var(--dark-blue);
+}
+.references > div {
+  flex: 1;
+  border-right: 4px solid var(--dark-blue);
+}
+@media screen and (max-width: 700px) {
+  .references {
+    flex-direction: column;
+  }
+  .references > div:first-child {
+    border-bottom: 4px solid var(--dark-blue);
+  }
+}
+.modlist {
+  margin: 0 0 16px;
+}
+.backtrace-container {
+  background-image: var(--gradient-red);
+  padding: 0px 12px 20px;
+}
+.backtrace {
+  background-color: var(--dark-navy);
+  color: var(--white);
+  max-height: 90vh;
+  overflow: auto;
+  border-radius: 4px;
+  margin: 0 16px;
+  border: 4px solid var(--light-navy);
+  padding: 4px;
+}

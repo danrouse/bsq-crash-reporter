@@ -1,0 +1,25 @@
+<div class="container">
+  <h2>Crash Log {{id}}</h2>
+  <p class="meta">
+    Received at 
+    <time class="smol" datetime="{{time}}">{{time}}</time>
+  </p>
+  <div class="references">
+    <div>
+      <h3>Loaded mods</h3>
+      <ul class="modlist">
+        {{memoryRefs}}
+      </ul>
+    </div>
+    <div>
+      <h3>Mods found in backtrace</h3>
+      <ul class="modlist">
+        {{backtraceRefs}}
+      </ul>
+    </div>
+  </div>
+  <div class="backtrace-container">
+    <h3>Backtrace</h3>
+    <pre class="backtrace">{{backtrace}}</pre>
+  </div>
+</div>

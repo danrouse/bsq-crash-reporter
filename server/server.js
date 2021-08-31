@@ -1,27 +1,18 @@
-const fs = require('fs');
 const express = require('express');
 const fileUpload = require('express-fileupload');
 const { Firestore } = require('@google-cloud/firestore');
-const ndkStack = require('./ndk-stack');
-const urgentMessage = require('./urgent-message');
-const { getLibReferences } = require('./tombstone-parser');
-const templates = {
-  listing: fs.readFileSync('templates/listing.html', 'utf-8'),
-  tombstone: fs.readFileSync('templates/tombstone.html', 'utf-8'),
-};
-
-function renderTemplate(template, tokens) {
-  let buf = templates[template];
-  Object.keys(tokens).forEach((key) => {
-    const regexp = new RegExp(`{{${key}}}`, 'g');
-    buf = buf.replace(regexp, tokens[key]);
-  });
-  return buf;
-}
+const { gzip, ungzip } = require('node-gzip');
+const PasswordGen = require('passwordgen');
+const ndkStack = require('./util/ndk-stack');
+const { renderTemplate, renderPage } = require('./util/templates');
+const urgentMessage = require('./util/urgent-message');
+const cacheMiddleware = require('./util/cache-middleware');
+const { getLibReferences } = require('./util/tombstone-parser');
 
 const PORT = process.env.PORT || 3000;
 
 const app = express();
+const passwordGen = new PasswordGen();
 const firestore = new Firestore({
   projectId: 'bsq-crash-reporter',
   keyFilename: './firestore-key.json',
@@ -36,83 +27,91 @@ app.use(fileUpload({
     tempFileDir: '/tmp/',
   }
 }));
+// TODO: Default error handler for prettier error output
 
 app.post('/upload', async (req, res) => {
   if (req.files.tombstone) {
     console.log('Received tombstone...');
-    // TODO: Worth even storing the raw tombstone?
 
     const references = getLibReferences(req.files.tombstone.data.toString());
     const ndkStackResult = await ndkStack(req.files.tombstone.data);
-    // TODO: Store ndk-stack output in persistent storage?
+    const compressedLog = await gzip(ndkStackResult);
+
+    const readableId = passwordGen.phrase(4, { symbols: false, separator: '-' });
+    // Return an id to the client before doing slow remote ops
+    res.status(201).send(readableId);
 
     const record = tombstonesCollection.doc();
-    // Return an id to the client before doing slow remote ops
-    res.status(201).send(record.id);
-
     await record.set({
+      readableId,
       time: Date.now(),
-      backtraceRefs: Array.from(references.backtrace),
-      memoryRefs: Array.from(references.memory),
-      log: ndkStackResult,
+      backtraceRefs: references.backtrace,
+      memoryRefs: references.memoryMap,
+      backtraceRefIds: references.backtraceIds,
+      memoryRefIds: references.memoryMapIds,
+      log: compressedLog,
     });
 
     console.info(`Saved tombstone to Firestore with id ${record.id}`);    
+    return;
   }
 
   res.status(418).send('Error: A tombstone must be included in the request');
 });
 
-app.get('/tombstones/:id', async (req, res) => {
-  const ref = tombstonesCollection.doc(req.params.id);
-  const record = await ref.get();
-  if (!record) {
-    return res.status(404).return('Not Found');
+app.get('/tombstones/:id', cacheMiddleware, async (req, res) => {
+  const query = await tombstonesCollection.where('readableId', '==', req.params.id).get();
+  if (query.empty) return res.status(404).send('Not Found');
+
+  const data = query.docs[0].data();
+  let uncompressedLog;
+  try {
+    uncompressedLog = await ungzip(data.log);
+  } catch(err) {
+    uncompressedLog = data.log;
   }
-  const data = record.data();
-  res.status(200).send(renderTemplate('tombstone', {
-    id: record.id,
-    time: new Date(data.time).toISOString(),
-    backtrace: data.log,
-    memoryRefs: data.memoryRefs.map((libName) =>
-      `<li><a href="/libs/${libName}">${libName}</a></li>`
-    ).join(''),
-    backtraceRefs: data.backtraceRefs.map((libName) =>
-      `<li><a href="/backtraces/${libName}">${libName}</a></li>`
-    ).join(''),
-  }));
+
+  res.status(200).send(
+    renderPage('tombstone', `Crash Log ${req.params.id}`, {
+      id: req.params.id,
+      time: new Date(data.time).toISOString(),
+      backtrace: uncompressedLog,
+      memoryRefs: data.memoryRefs.map((libName, i) =>
+        renderTemplate('tombstoneModItem', { libName, buildId: data.memoryRefIds[i] })).join(''),
+      backtraceRefs: data.backtraceRefs.map((libName, i) =>
+        renderTemplate('tombstoneModItem', { libName, buildId: data.backtraceRefIds[i] })).join(''),
+    })
+  );
 });
 
+function renderSearchResultsPage(query, search, searchType) {
+  return renderPage('listing', `${search} (${searchType})`, {
+    search,
+    searchType,
+    results: query.empty
+      ? '<li>No results found</li>'
+      : query.docs.map((doc) => {
+        const data = doc.data();
+        const buildIdIndex = data[`${searchType}Refs`].indexOf(search);
+        const timestamp = new Date(data.time).toISOString();
+        return renderTemplate('listingItem', {
+          id: data.readableId,
+          buildId: data[`${search}RefIds`][buildIdIndex],
+          time: timestamp,
+        });
+      }).join(''),
+  });
+}
+
+// TODO: Figure out caching strategy for search results that doesn't go stale...
 app.get('/backtraces/:libName', async (req, res) => {
   const query = await tombstonesCollection.where('backtraceRefs', 'array-contains', req.params.libName).get();
-  if (query.empty) {
-    return res.status(404).return('Not Found');
-  }
-
-  res.status(200).send(renderTemplate('listing', {
-    search: req.params.libName,
-    searchType: 'backtrace',
-    results: query.docs.map((doc) => {
-      const timestamp = new Date(doc.data().time).toISOString();
-      return `<li><a href="/tombstones/${doc.id}">${doc.id} (<time class="date" datetime="${timestamp}">${timestamp}</time>)</a></li>`
-    }).join(''),
-  }));
+  res.status(200).send(renderSearchResultsPage(query, req.params.libName, 'backtrace'));
 });
 
 app.get('/libs/:libName', async (req, res) => {
   const query = await tombstonesCollection.where('memoryRefs', 'array-contains', req.params.libName).get();
-  if (query.empty) {
-    return res.status(404).return('Not Found');
-  }
-
-  res.status(200).send(renderTemplate('listing', {
-    search: req.params.libName,
-    searchType: 'memory',
-    results: query.docs.map((doc) => {
-      const timestamp = new Date(doc.data().time).toISOString();
-      return `<li><a href="/tombstones/${doc.id}">${doc.id} (<time class="date" datetime="${timestamp}">${timestamp}</time>)</a></li>`
-    }).join(''),
-  }));
+  res.status(200).send(renderSearchResultsPage(query, req.params.libName, 'memory'));
 });
 
 app.get('/', (req, res) => res.send(urgentMessage()));
