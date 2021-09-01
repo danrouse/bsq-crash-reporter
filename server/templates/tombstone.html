@@ -1,9 +1,11 @@
 <div class="container">
   <h2>Crash Log {{id}}</h2>
-  <p class="meta">
-    Received at 
-    <time class="smol" datetime="{{time}}">{{time}}</time>
-  </p>
+  <dl class="meta">
+    <dt>Received at</dt><dd><time datetime="{{time}}">{{time}}</time></dd>
+    <dt>Game Version </dt><dd>{{gameVersion}}</dd>
+    <dt>OS </dt><dd>{{operatingSystem}}</dd>
+    <dt>UID </dt><dd>{{deviceUniqueId}}</dd>
+  </dl>
   <div class="references">
     <div>
       <h3>Loaded mods</h3>

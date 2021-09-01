@@ -6,8 +6,10 @@ module.exports = function cacheMiddleware(req, res, next) {
   const key = req.originalUrl || req.url;
   const cached = memoryCache.get(key);
   if (cached) return res.send(cached);
-  res.sendResponse = res.send = (contents) => {
+  res.sendResponse = res.send;
+  res.send = (contents) => {
     memoryCache.put(key, contents, ITS_BEEN__ONE_WEEK_SINCE_YOU_LOOKED_AT_ME);
+    res.sendResponse(contents);
   };
   next();
 };

@@ -82,9 +82,24 @@ ul {
 .meta {
   background-image: var(--gradient-navy);
   margin: 0;
-  padding: 4px;
+  padding: 8px;
   text-align: center;
   border-bottom: 4px solid var(--dark-navy);
+  font-size: 80%;
+}
+.meta dt {
+  display: inline-block;
+  width: 25%;
+  text-align: right;
+  opacity: 0.8;
+  vertical-align: top;
+}
+.meta dd {
+  display: inline-block;
+  width: calc(75% - 12px);
+  margin: 0;
+  padding-left: 12px;
+  text-align: left;
 }
 .references {
   display: flex;

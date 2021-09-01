@@ -20,6 +20,7 @@ const firestore = new Firestore({
 const tombstonesCollection = firestore.collection('tombstones');
 
 app.use(express.static('static'));
+// app.use(express.json());
 app.use(fileUpload({
   limits: {
     fileSize: 50 * 1024 * 1024,
@@ -29,9 +30,10 @@ app.use(fileUpload({
 }));
 // TODO: Default error handler for prettier error output
 
-app.post('/upload', async (req, res) => {
+app.post('/upload-tombstone', async (req, res) => {
   if (req.files.tombstone) {
     console.log('Received tombstone...');
+    console.log(req);
 
     const references = getLibReferences(req.files.tombstone.data.toString());
     const ndkStackResult = await ndkStack(req.files.tombstone.data);
@@ -44,6 +46,9 @@ app.post('/upload', async (req, res) => {
     const record = tombstonesCollection.doc();
     await record.set({
       readableId,
+      version: req.body.version,
+      uid: req.body.uid,
+      os: req.body.os,
       time: Date.now(),
       backtraceRefs: references.backtrace,
       memoryRefs: references.memoryMap,
@@ -75,6 +80,9 @@ app.get('/tombstones/:id', cacheMiddleware, async (req, res) => {
     renderPage('tombstone', `Crash Log ${req.params.id}`, {
       id: req.params.id,
       time: new Date(data.time).toISOString(),
+      gameVersion: data.version,
+      deviceUniqueId: data.uid,
+      operatingSystem: data.os,
       backtrace: uncompressedLog,
       memoryRefs: data.memoryRefs.map((libName, i) =>
         renderTemplate('tombstoneModItem', {
