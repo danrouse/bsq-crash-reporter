@@ -6,7 +6,7 @@ const PasswordGen = require('passwordgen');
 const ndkStack = require('./util/ndk-stack');
 const { renderTemplate, renderPage } = require('./util/templates');
 const urgentMessage = require('./util/urgent-message');
-const cacheMiddleware = require('./util/cache-middleware');
+const { cacheMiddleware, invalidateCache } = require('./util/cache-middleware');
 const { getTombstoneDetails } = require('./util/tombstone-parser');
 
 const PORT = process.env.PORT || 3000;
@@ -55,10 +55,13 @@ app.post('/upload-tombstone', async (req, res) => {
       signalInfo: details.signalInfo,
       log: compressedLog,
     };
-    console.log('Sending fields with serialized size of', JSON.stringify(fields).length);
+    console.log('Saving fields with serialized size of', JSON.stringify(fields).length);
     await record.set(fields);
-
     console.info(`Saved tombstone to Firestore with id ${record.id}`);    
+
+    details.backtrace.forEach((libName) => invalidateCache(`backtraces/${libName}`));
+    details.memoryMap.forEach((libName) => invalidateCache(`libs/${libName}`));
+    invalidateCache('/');
     return;
   }
 
@@ -122,18 +125,17 @@ function renderSearchResultsPage(query, search, searchType) {
   });
 }
 
-// TODO: Figure out caching strategy for search results that doesn't go stale...
-app.get('/backtraces/:libName', async (req, res) => {
+app.get('/backtraces/:libName', cacheMiddleware, async (req, res) => {
   const query = await tombstonesCollection.where('backtraceRefs', 'array-contains', req.params.libName).get();
   res.status(200).send(renderSearchResultsPage(query, req.params.libName, 'backtrace'));
 });
 
-app.get('/libs/:libName', async (req, res) => {
+app.get('/libs/:libName', cacheMiddleware, async (req, res) => {
   const query = await tombstonesCollection.where('memoryRefs', 'array-contains', req.params.libName).get();
   res.status(200).send(renderSearchResultsPage(query, req.params.libName, 'memory'));
 });
 
-app.get('/', async (req, res) => {
+app.get('/', cacheMiddleware, async (req, res) => {
   const query = await tombstonesCollection.orderBy('time', 'desc').limit(25).get();
   res.status(200).send(
     renderPage('latest', `Latest crashes`, {

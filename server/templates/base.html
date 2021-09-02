@@ -6,7 +6,17 @@
     <link rel="stylesheet" href="/style.css">
   </head>
   <body>
-    <h1 class="title"><a href="/">{{title}}</a></h1>
+    <header>
+      <a href="/" class="title">{{title}}</a>
+      <form id="search-input">
+        <input type="text" name="name" placeholder="libname">
+        <span class="icon">🔎</span>
+        <label><input type="radio" name="type" value="libs">Memory</label>
+        <label><input type="radio" name="type" value="backtraces" checked>Backtraces</label>
+        <button>Search</button>
+      </form>
+    </header>
     {{page}}
+    <script>document.getElementById('search-input').addEventListener('submit',evt=>{evt.preventDefault();var e=evt.target.elements;e.name.value&&(location.href=`/${e.type.value}/${e.name.value}`)})</script>
   </body>
 </html>
