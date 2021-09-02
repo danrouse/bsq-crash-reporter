@@ -22,6 +22,8 @@
   </div>
   <div class="backtrace-container">
     <h3>Backtrace</h3>
-    <pre class="backtrace">{{backtrace}}</pre>
+    <p class="signal-info">{{signalInfo}}</p>
+    <div class="backtrace">{{backtrace}}</div>
   </div>
 </div>
+<script>var s=()=>Array.from(document.querySelectorAll('.selected')).forEach(e=>e.classList.remove('selected'))||document.querySelector(`a[name="${location.hash.slice(1)}"]`).classList.add('selected');location.hash.length>2&&s();window.onhashchange=s</script>

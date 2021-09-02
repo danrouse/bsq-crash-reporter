@@ -7,7 +7,7 @@ const ndkStack = require('./util/ndk-stack');
 const { renderTemplate, renderPage } = require('./util/templates');
 const urgentMessage = require('./util/urgent-message');
 const cacheMiddleware = require('./util/cache-middleware');
-const { getLibReferences } = require('./util/tombstone-parser');
+const { getTombstoneDetails } = require('./util/tombstone-parser');
 
 const PORT = process.env.PORT || 3000;
 
@@ -20,7 +20,6 @@ const firestore = new Firestore({
 const tombstonesCollection = firestore.collection('tombstones');
 
 app.use(express.static('static'));
-// app.use(express.json());
 app.use(fileUpload({
   limits: {
     fileSize: 50 * 1024 * 1024,
@@ -33,29 +32,31 @@ app.use(fileUpload({
 app.post('/upload-tombstone', async (req, res) => {
   if (req.files.tombstone) {
     console.log('Received tombstone...');
-    console.log(req);
 
-    const references = getLibReferences(req.files.tombstone.data.toString());
+    const details = getTombstoneDetails(req.files.tombstone.data.toString());
     const ndkStackResult = await ndkStack(req.files.tombstone.data);
     const compressedLog = await gzip(ndkStackResult);
+    const readableId = passwordGen.phrase(3, { symbols: false, separator: '-' });
 
-    const readableId = passwordGen.phrase(4, { symbols: false, separator: '-' });
     // Return an id to the client before doing slow remote ops
     res.status(201).send(readableId);
 
     const record = tombstonesCollection.doc();
-    await record.set({
+    const fields = {
       readableId,
       version: req.body.version,
       uid: req.body.uid,
       os: req.body.os,
       time: Date.now(),
-      backtraceRefs: references.backtrace,
-      memoryRefs: references.memoryMap,
-      backtraceRefIds: references.backtraceIds,
-      memoryRefIds: references.memoryMapIds,
+      backtraceRefs: details.backtrace,
+      memoryRefs: details.memoryMap,
+      backtraceRefIds: details.backtraceIds,
+      memoryRefIds: details.memoryMapIds,
+      signalInfo: details.signalInfo,
       log: compressedLog,
-    });
+    };
+    console.log('Sending fields with serialized size of', JSON.stringify(fields).length);
+    await record.set(fields);
 
     console.info(`Saved tombstone to Firestore with id ${record.id}`);    
     return;
@@ -71,7 +72,7 @@ app.get('/tombstones/:id', cacheMiddleware, async (req, res) => {
   const data = query.docs[0].data();
   let uncompressedLog;
   try {
-    uncompressedLog = await ungzip(data.log);
+    uncompressedLog = (await ungzip(data.log)).toString();
   } catch(err) {
     uncompressedLog = data.log;
   }
@@ -83,7 +84,9 @@ app.get('/tombstones/:id', cacheMiddleware, async (req, res) => {
       gameVersion: data.version,
       deviceUniqueId: data.uid,
       operatingSystem: data.os,
-      backtrace: uncompressedLog,
+      signalInfo: data.signalInfo,
+      backtrace: uncompressedLog.split('\n').map((line, i) =>
+        `<a name="L${i+1}" href="#L${i+1}">${line}</a>`).join(''),
       memoryRefs: data.memoryRefs.map((libName, i) =>
         renderTemplate('tombstoneModItem', {
           libName,
@@ -130,7 +133,25 @@ app.get('/libs/:libName', async (req, res) => {
   res.status(200).send(renderSearchResultsPage(query, req.params.libName, 'memory'));
 });
 
-app.get('/', (req, res) => res.send(urgentMessage()));
+app.get('/', async (req, res) => {
+  const query = await tombstonesCollection.orderBy('time', 'desc').limit(25).get();
+  res.status(200).send(
+    renderPage('latest', `Latest crashes`, {
+      results: query.empty
+        ? '<li>No results found</li>'
+        : query.docs.map((doc) => {
+          const data = doc.data();
+          const timestamp = new Date(data.time).toISOString();
+          return renderTemplate('listingItem', {
+            id: data.readableId,
+            buildId: '.',
+            time: timestamp,
+          });
+        }).join('')
+      }
+    )
+  );
+});
 
 app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}...`);

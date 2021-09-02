@@ -2,6 +2,7 @@ const fs = require('fs');
 
 const templates = {
   base: fs.readFileSync('templates/base.html', 'utf-8'),
+  latest: fs.readFileSync('templates/latest.html', 'utf-8'),
   listing: fs.readFileSync('templates/listing.html', 'utf-8'),
   listingItem: fs.readFileSync('templates/listing-item.html', 'utf-8'),
   tombstone: fs.readFileSync('templates/tombstone.html', 'utf-8'),

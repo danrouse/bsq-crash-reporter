@@ -19,6 +19,7 @@ body {
   background-color: var(--light-blue);
   background-image: var(--gradient-blue);
   color: var(--white);
+  text-shadow: 0.05em 0.05em 0px var(--black);
 }
 a { 
   color: var(--white);
@@ -35,7 +36,6 @@ h1, h2, h3 {
   font-style: italic;
   font-weight: 400;
   margin: 0;
-  text-shadow: 0.05em 0.05em 0px var(--black);
 }
 h1 {
   padding: 4px 16px;
@@ -44,6 +44,10 @@ h1 {
   color: var(--white);
   border-bottom: 4px solid var(--dark-navy);
 }
+  h1 a, h1 a:hover {
+    border: none;
+    color: inherit;
+  }
 h2 {
   background-image: var(--gradient-red);
   font-size: 48px;
@@ -124,13 +128,31 @@ ul {
   background-image: var(--gradient-red);
   padding: 0px 12px 20px;
 }
+.signal-info {
+  margin: 4px;
+  text-align: center;
+  font-size: 90%;
+}
 .backtrace {
   background-color: var(--dark-navy);
   color: var(--white);
-  max-height: 90vh;
   overflow: auto;
   border-radius: 4px;
   margin: 0 16px;
   border: 4px solid var(--light-navy);
-  padding: 4px;
+  white-space: pre;
+  font-family: monospace;
+  padding: 4px 0;
+}
+.backtrace a {
+  padding: 0 8px;
+  border: none;
+  display: block;
+}
+.backtrace a:hover, .backtrace a.selected {
+  color: inherit;
+  background-color: var(--light-blue);
+}
+.backtrace a:active, .backtrace a:focus {
+  outline: none;
 }
