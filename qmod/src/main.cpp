@@ -6,7 +6,8 @@ const char* dataFilePath = "/sdcard/Android/data/com.beatgames.beatsaber/files/c
 std::string latestTombstonePath;
 time_t latestTombstoneTime;
 bool hasNewTombstone = false;
-const bool ALWAYS_SHOW_DIALOG = true; // for debugging
+const bool ALWAYS_SHOW_DIALOG = false; // for debugging
+// TODO: Establish if it's the first time this mod is loading, and don't show dialog
 
 time_t readLatestKnownTombstoneTime() {
     time_t latest;
@@ -46,22 +47,16 @@ extern "C" void setup(ModInfo& info) {
         getLogger().info("A new tombstone was detected, a crash report dialog will be shown");
         hasNewTombstone = true;
     }
-
-    // TODO: This is just for testing the server!
-    uploadCrashLog(latestTombstonePath.c_str(), []() {
-        getLogger().debug("Log uploaded successfully!");
-    }, [](const char* msg) {
-        getLogger().debug("Failed to upload log: %s", msg);
-    });
 }
 
 // TODO: Confirm if this is actually not a terrible place to hook the main menu
 // (On scene transition is more common (and more involved to setup), but I don't know why?)
 MAKE_HOOK_MATCH(MainFlowCoordinator_DidActivate, &GlobalNamespace::MainFlowCoordinator::DidActivate, void, GlobalNamespace::MainFlowCoordinator* self, bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling) {
     MainFlowCoordinator_DidActivate(self, firstActivation, addedToHierarchy, screenSystemEnabling);
-    if (ALWAYS_SHOW_DIALOG || (firstActivation && hasNewTombstone)) {
+    if (ALWAYS_SHOW_DIALOG || (firstActivation && addedToHierarchy && hasNewTombstone)) {
         getLogger().info("Showing crash report dialog");
         showCrashReportDialog(latestTombstonePath.c_str());
+        hasNewTombstone = false;
         std::ofstream writer(dataFilePath);
         if (writer) {
             getLogger().debug("Writing latest tombstone time to %s", dataFilePath);
@@ -73,5 +68,6 @@ MAKE_HOOK_MATCH(MainFlowCoordinator_DidActivate, &GlobalNamespace::MainFlowCoord
 
 extern "C" void load() {
     il2cpp_functions::Init();
+    QuestUI::Init();
     INSTALL_HOOK(getLogger(), MainFlowCoordinator_DidActivate);
 }
