@@ -1,7 +1,6 @@
 $packages = Invoke-WebRequest "https://qpackages.com" | ConvertFrom-Json
 $packages.Split() | foreach {
   $packageDetails = Invoke-WebRequest "https://qpackages.com/$_" | ConvertFrom-Json
-  Start-Sleep -Milliseconds 100 # don't slam qpackages too hard
   $packageMeta = Invoke-WebRequest "https://qpackages.com/$_/$($packageDetails.version)" | ConvertFrom-Json
   $libName = $packageMeta.config.info.name
   $libFilename = $packageMeta.config.info.additionalData.overrideSoName
@@ -16,5 +15,4 @@ $packages.Split() | foreach {
   } else {
     Write-Output "No debug lib found for $libName, skipping..."
   }
-  Start-Sleep -Milliseconds 500
 }

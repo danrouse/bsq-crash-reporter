@@ -1,4 +1,4 @@
-$pathToIl2CppInspector = "C:\dev\Il2CppInspector-2021.1\Il2CppInspector-cli.exe"
+$pathToIl2CppInspector = "C:\dev\Il2CppInspector\Il2CppInspector.CLI\bin\Release\netcoreapp3.1\win-x64\Il2CppInspector.exe"
 $pathToIl2CppSym = "C:\dev\il2cpp_sym\target\debug\il2cpp_sym.exe"
 
 # Extract APK from Quest
@@ -26,6 +26,9 @@ if (-not (Test-Path -Path metadata.json)) {
 
 if (-not (Test-Path -Path libil2cpp.sym.so)) {
   & $pathToIl2CppSym
+  if (Test-Path -Path debug-libs\libil2cpp.so) {
+    del debug-libs\libil2cpp.so
+  }
   move libil2cpp.sym.so debug-libs\libil2cpp.so
 }
 
