@@ -1,3 +1,6 @@
+const fs = require('fs');
+const http = require('http');
+const https = require('https');
 const express = require('express');
 const fileUpload = require('express-fileupload');
 const { Firestore } = require('@google-cloud/firestore');
@@ -5,7 +8,6 @@ const { gzip, ungzip } = require('node-gzip');
 const PasswordGen = require('passwordgen');
 const ndkStack = require('./util/ndk-stack');
 const { renderTemplate, renderPage } = require('./util/templates');
-const urgentMessage = require('./util/urgent-message');
 const { cacheMiddleware, invalidateCache } = require('./util/cache-middleware');
 const { getTombstoneDetails } = require('./util/tombstone-parser');
 
@@ -15,11 +17,12 @@ const app = express();
 const passwordGen = new PasswordGen();
 const firestore = new Firestore({
   projectId: 'bsq-crash-reporter',
-  keyFilename: './firestore-key.json',
+  keyFilename: './secrets/firestore-key.json',
 });
 const tombstonesCollection = firestore.collection('tombstones');
 
 app.use(express.static('static'));
+app.use('/.well-known', express.static('.well-known', { dotfiles: 'allow' }));
 app.use(fileUpload({
   limits: {
     fileSize: 50 * 1024 * 1024,
@@ -91,13 +94,13 @@ app.get('/tombstones/:id', cacheMiddleware, async (req, res) => {
       backtrace: uncompressedLog.split('\n').map((line, i) =>
         `<a name="L${i+1}" href="#L${i+1}">${line}</a>`).join(''),
       memoryRefs: data.memoryRefs.map((libName, i) =>
-        renderTemplate('tombstoneModItem', {
+        renderTemplate('tombstone-mod-item', {
           libName,
           buildId: data.memoryRefIds[i],
           searchType: 'libs',
         })).join(''),
       backtraceRefs: data.backtraceRefs.map((libName, i) =>
-        renderTemplate('tombstoneModItem', {
+        renderTemplate('tombstone-mod-item', {
           libName,
           buildId: data.backtraceRefIds[i],
           searchType: 'backtraces',
@@ -116,7 +119,7 @@ function renderSearchResultsPage(query, search, searchType) {
         const data = doc.data();
         const buildIdIndex = data[`${searchType}Refs`].indexOf(search);
         const timestamp = new Date(data.time).toISOString();
-        return renderTemplate('listingItem', {
+        return renderTemplate('listing-item', {
           id: data.readableId,
           buildId: data[`${searchType}RefIds`][buildIdIndex],
           time: timestamp,
@@ -144,9 +147,8 @@ app.get('/', cacheMiddleware, async (req, res) => {
         : query.docs.map((doc) => {
           const data = doc.data();
           const timestamp = new Date(data.time).toISOString();
-          return renderTemplate('listingItem', {
+          return renderTemplate('latest-item', {
             id: data.readableId,
-            buildId: '.',
             time: timestamp,
           });
         }).join('')
@@ -155,6 +157,8 @@ app.get('/', cacheMiddleware, async (req, res) => {
   );
 });
 
-app.listen(PORT, () => {
-  console.log(`Server listening on port ${PORT}...`);
-});
+http.createServer(app).listen(PORT, () => console.log(`HTTP server listening on port ${PORT}`));
+https.createServer({
+  key: fs.readFileSync('./secrets/private.key'),
+  cert: fs.readFileSync('./secrets/certificate.crt'),
+}, app).listen(443, () => console.log('HTTP server listening on port 443'));

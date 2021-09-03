@@ -1,15 +1,12 @@
 const fs = require('fs');
+const path = require('path');
+const urgentMessage = require('./urgent-message');
 
-const templates = {
-  base: fs.readFileSync('templates/base.html', 'utf-8'),
-  latest: fs.readFileSync('templates/latest.html', 'utf-8'),
-  listing: fs.readFileSync('templates/listing.html', 'utf-8'),
-  listingItem: fs.readFileSync('templates/listing-item.html', 'utf-8'),
-  tombstone: fs.readFileSync('templates/tombstone.html', 'utf-8'),
-  tombstoneModItem: fs.readFileSync('templates/tombstone-mod-item.html', 'utf-8'),
-};
-
-// TODO (in-template): Add input + radios to search for mods
+const templates = {};
+fs.readdirSync(path.join(__dirname, '../templates')).forEach((fileName) => {
+  const contents = fs.readFileSync(path.join(__dirname, '../templates', fileName), 'utf-8');
+  templates[fileName.split('.').slice(0, -1).join('')] = contents;
+});
 
 function renderTemplate(template, tokens) {
   if (!template in templates) throw new Error(`Template not found: ${template}`);
@@ -25,6 +22,7 @@ function renderPage(template, title, tokens) {
   return renderTemplate('base', {
     title: `Beat Saber Quest Crash Logs${title ? ` | ${title}` : ''}`,
     page: renderTemplate(template, tokens),
+    urgentMessage: urgentMessage(),
   });
 }
 

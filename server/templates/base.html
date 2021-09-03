@@ -4,6 +4,8 @@
     <meta charset="utf-8">
     <title>{{title}}</title>
     <link rel="stylesheet" href="/style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/timeago.js/2.0.2/timeago.min.js"></script>
+    <script src="/magic.js"></script>
   </head>
   <body>
     <header>
@@ -17,6 +19,6 @@
       </form>
     </header>
     {{page}}
-    <script>document.getElementById('search-input').addEventListener('submit',evt=>{evt.preventDefault();var e=evt.target.elements;e.name.value&&(location.href=`/${e.type.value}/${e.name.value}`)})</script>
+    <footer>{{urgentMessage}}</footer>
   </body>
 </html>

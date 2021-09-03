@@ -12,7 +12,9 @@
   --gradient-navy: linear-gradient(90deg, var(--light-navy), var(--dark-navy) 100%);
   --gradient-red: linear-gradient(90deg, var(--light-red), var(--dark-red) 100%);
 }
-
+html, body {
+  min-height: 100vh;
+}
 body {
   margin: 0;
   font-family: Verdana,Geneva,sans-serif;
@@ -20,6 +22,8 @@ body {
   background-image: var(--gradient-blue);
   color: var(--white);
   text-shadow: 0.05em 0.05em 0px var(--black);
+  display: flex;
+  flex-direction: column;
 }
 a { 
   color: var(--white);
@@ -109,6 +113,9 @@ h3 {
   padding: 8px;
   font-size: 32px;
 }
+.search-results, .container {
+  flex: 1;
+}
 .results {
   padding: 0 24px 0 48px;
 }
@@ -161,6 +168,7 @@ ul {
 .references > div {
   flex: 1;
   border-right: 4px solid var(--dark-blue);
+  overflow: hidden;
 }
 @media screen and (max-width: 700px) {
   .references {
@@ -205,4 +213,12 @@ ul {
 }
 .backtrace a:active, .backtrace a:focus {
   outline: none;
+}
+footer {
+  background-image: var(--gradient-navy);
+  font-size: 10px;
+  padding: 4px 16px;
+  color: rgba(255, 255, 255, 0.5);
+  text-align: right;
+  border-top: 4px solid var(--dark-navy);
 }
