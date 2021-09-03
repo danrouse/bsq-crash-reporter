@@ -7,7 +7,6 @@ std::string latestTombstonePath;
 time_t latestTombstoneTime;
 bool hasNewTombstone = false;
 const bool ALWAYS_SHOW_DIALOG = false; // for debugging
-// TODO: Establish if it's the first time this mod is loading, and don't show dialog
 
 time_t readLatestKnownTombstoneTime() {
     time_t latest;
@@ -43,7 +42,7 @@ extern "C" void setup(ModInfo& info) {
     getLatestTombstone(&latestTombstoneTime, &latestTombstonePath);
     getLogger().debug("Latest tombstone time: %ld - %s", latestTombstoneTime, latestTombstonePath.c_str());
 
-    if (!latestKnownTombstoneTime || latestTombstoneTime > latestKnownTombstoneTime) {
+    if (latestKnownTombstoneTime && latestTombstoneTime > latestKnownTombstoneTime) {
         getLogger().info("A new tombstone was detected, a crash report dialog will be shown");
         hasNewTombstone = true;
     }
@@ -56,13 +55,12 @@ MAKE_HOOK_MATCH(MainFlowCoordinator_DidActivate, &GlobalNamespace::MainFlowCoord
     if (ALWAYS_SHOW_DIALOG || (firstActivation && addedToHierarchy && hasNewTombstone)) {
         getLogger().info("Showing crash report dialog");
         showCrashReportDialog(latestTombstonePath.c_str());
-        hasNewTombstone = false;
-        std::ofstream writer(dataFilePath);
-        if (writer) {
-            getLogger().debug("Writing latest tombstone time to %s", dataFilePath);
-            writer << latestTombstoneTime;
-            writer.close();
-        }
+    }
+    std::ofstream writer(dataFilePath);
+    if (writer) {
+        getLogger().debug("Writing latest tombstone time to %s", dataFilePath);
+        writer << latestTombstoneTime;
+        writer.close();
     }
 }
 

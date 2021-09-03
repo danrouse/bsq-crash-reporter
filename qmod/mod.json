@@ -4,7 +4,7 @@
     "name": "Crash Reporter",
     "id": "crash-reporter",
     "author": "danrouse#0214",
-    "version": "0.1.0",
+    "version": "1.0.0-rc1",
     "packageId": "com.beatgames.beatsaber",
     "packageVersion": "1.17.0",
     "description": "Automatically reports crash logs",
