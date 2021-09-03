@@ -1,0 +1,84 @@
+name: Build mod and create release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+        lfs: true
+
+    - name: Install PowerShell
+      run: sudo apt-get install -y powershell
+    
+    - name: Setup NDK
+      id: setup-ndk
+      uses: nttld/setup-ndk@v1.0.3
+      with:
+        ndk-version: r22
+      
+    - name: Create ndkpath.txt
+      run: echo ${{ steps.setup-ndk.outputs.ndk-path }} > ${GITHUB_WORKSPACE}/qmod/ndkpath.txt
+
+    - name: Get QPM
+      uses: dawidd6/action-download-artifact@v2
+      with:
+        github_token: ${{secrets.GITHUB_TOKEN}}
+        repo: sc2ad/QuestPackageManager
+        name: QPM-ubuntu-x64
+        path: QPM
+        workflow: main.yml
+    
+    - name: cd
+      run: cd ./qmod
+      
+    - name: QPM collect
+      run: chmod +x ./QPM/QPM && ./QPM/QPM collect
+      
+    - name: QPM restore
+      run: ./QPM/QPM restore
+
+    - name: List restored QPM modules
+      run: ls -la ${GITHUB_WORKSPACE}/extern/ && ls -la QPM_Temp
+
+    - name: Build
+      run: cd ${GITHUB_WORKSPACE} && pwsh -Command ./buildQMOD.ps1
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: libcrash-reporter.so
+        path: ./libs/arm64-v8a/libcrash-reporter.so
+        if-no-files-found: error
+
+    - name: Upload debug artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: debug_libcrash-reporter.so
+        path: ./obj/local/arm64-v8a/libcrash-reporter.so
+        if-no-files-found: error
+
+    - name: Upload .qmod artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: "crash-reporter.qmod"
+        path: "./*.qmod"
+        if-no-files-found: error
+    
+    - name: Move release artifacts
+      run: mkdir artifacts && mv *.qmod artifacts && mv ./libs/arm64-v8a/libcrash-reporter.so artifacts/libcrash-reporter.so && mv ./obj/local/arm64-v8a/libcrash-reporter.so artifacts/debug_libcrash-reporter.so
+
+    - name: Create release
+      uses: ncipollo/release-action@v1
+      with:
+        artifacts: "artifacts/*"
+        body: "Automatically created release from new version tag"
+        token: ${{ secrets.GITHUB_TOKEN }}
+        artifactErrorsFailBuild: true
