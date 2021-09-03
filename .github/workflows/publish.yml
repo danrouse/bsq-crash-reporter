@@ -79,9 +79,8 @@ jobs:
 
     - name: Create release
       uses: ncipollo/release-action@v1
-      working-directory: ./qmod
       with:
-        artifacts: "artifacts/*"
+        artifacts: "qmod/artifacts/*"
         body: "Automatically created release from new version tag"
         token: ${{ secrets.GITHUB_TOKEN }}
         artifactErrorsFailBuild: true
