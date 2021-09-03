@@ -1,4 +1,5 @@
 **/node_modules
 *.txt
-firestore-key.json
+secrets
 tombstone_0*
+*.qmod

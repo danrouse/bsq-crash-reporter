@@ -16,5 +16,6 @@ WORKDIR /usr/src/app
 ADD server/package*.json ./
 RUN npm install
 
+ADD server/.well-known ./well-known
 ADD server ./
 CMD npm start

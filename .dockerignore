@@ -2,3 +2,4 @@ server/node_modules
 .vscode
 qmod
 *.ps1
+!.well-known/
