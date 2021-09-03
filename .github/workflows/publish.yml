@@ -44,10 +44,6 @@ jobs:
       run: ../QPM/QPM restore
       working-directory: ./qmod
 
-    - name: List restored QPM modules
-      run: ls -la ${GITHUB_WORKSPACE}/qmod/extern/ && ls -la ../QPM_Temp
-      working-directory: ./qmod
-
     - name: Build
       run: pwsh -Command ./buildQMOD.ps1
       working-directory: ./qmod
