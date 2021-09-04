@@ -1,0 +1,23 @@
+<div class="container">
+  <h2>Manual Tombstone Upload</h2>
+  <form method="POST" action="/upload-tombstone" id="sc2form">
+    <label>
+      Tombstone:
+      <input type="file" name="tombstone">
+    </label>
+    <input type="hidden" name="version" value="<empty>">
+    <button>Submit</button>
+  </form>
+</div>
+<script>
+document.getElementById('sc2form').addEventListener('submit', (evt) => {
+  evt.preventDefault();
+  const fd = new FormData(event.target);
+  
+  fetch('/upload-tombstone', { method:'POST', body: fd })
+    .then(res => res.text())
+    .then(id =>
+      setTimeout(() => location.href=`/tombstones/${id}`, 3000)
+    );
+});
+</script>

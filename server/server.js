@@ -8,7 +8,7 @@ const { gzip, ungzip } = require('node-gzip');
 const PasswordGen = require('passwordgen');
 const ndkStack = require('./util/ndk-stack');
 const { renderTemplate, renderPage } = require('./util/templates');
-const { cacheMiddleware, invalidateCache } = require('./util/cache-middleware');
+const { cacheMiddleware, invalidateCache, clearCache } = require('./util/cache-middleware');
 const { getTombstoneDetails } = require('./util/tombstone-parser');
 
 const PORT = process.env.PORT || 3000;
@@ -38,7 +38,7 @@ app.post('/upload-tombstone', async (req, res) => {
 
     const details = getTombstoneDetails(req.files.tombstone.data.toString());
     const ndkStackResult = await ndkStack(req.files.tombstone.data);
-    const compressedLog = await gzip(ndkStackResult);
+    const compressedLog = await gzip(ndkStackResult + details.appendToBacktrace);
     const readableId = passwordGen.phrase(3, { symbols: false, separator: '-' });
 
     // Return an id to the client before doing slow remote ops
@@ -47,9 +47,9 @@ app.post('/upload-tombstone', async (req, res) => {
     const record = tombstonesCollection.doc();
     const fields = {
       readableId,
-      version: req.body.version,
-      uid: req.body.uid,
-      os: req.body.os,
+      version: req.body.version || '<empty>',
+      uid: req.body.uid || '<empty>',
+      os: req.body.os || '<empty>',
       time: Date.now(),
       backtraceRefs: details.backtrace,
       memoryRefs: details.memoryMap,
@@ -155,6 +155,19 @@ app.get('/', cacheMiddleware, async (req, res) => {
       }
     )
   );
+});
+
+app.get('/clear-cache', async (req, res) => {
+  clearCache();
+  res.send(renderTemplate('base', {
+    title: 'Cache cleared',
+    page: '<div class="container">Cache cleared.</div>',
+    urgentMessage: 'what',
+  }));
+});
+
+app.get('/manual-upload', async (req, res) => {
+  res.send(renderPage('upload-tombstone'));
 });
 
 http.createServer(app).listen(PORT, () => console.log(`HTTP server listening on port ${PORT}`));

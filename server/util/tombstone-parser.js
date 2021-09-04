@@ -11,14 +11,23 @@ function collectLibReferences(symbols, buildIds, line) {
 function getTombstoneDetails(tombstoneText) {
   const tombstoneLines = tombstoneText.split('\n');
 
+  let appendToBacktrace = '';
+
+  const failedToUnwindIndex = tombstoneLines.indexOf('Failed to unwind');
   const backtraceStart = tombstoneLines.indexOf('backtrace:') + 1;
   const backtraceEnd = tombstoneLines.indexOf('stack:') - 1;
   const backtraceSymbols = [];
   const backtraceIds = [];
-  if (backtraceStart !== -1 && tombstoneLines.length > 2) {
+  if (failedToUnwindIndex === -1) {
     tombstoneLines.slice(backtraceStart, backtraceEnd).forEach(
       collectLibReferences.bind(null, backtraceSymbols, backtraceIds)
     );
+  } else {
+    appendToBacktrace += tombstoneLines[failedToUnwindIndex - 1].trim();
+    const memoryNearLrIndex = tombstoneLines.findIndex((line) => line.startsWith('memory near lr ('));
+    if (memoryNearLrIndex !== -1) {
+      appendToBacktrace += '\n' + tombstoneLines[memoryNearLrIndex].slice(0, -1);
+    }
   }
 
   const memoryMapStart = tombstoneLines.findIndex((line) => line.startsWith('memory map'));
@@ -37,6 +46,7 @@ function getTombstoneDetails(tombstoneText) {
     backtraceIds,
     memoryMapIds,
     signalInfo,
+    appendToBacktrace,
   };
 }
 

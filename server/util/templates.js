@@ -11,10 +11,12 @@ fs.readdirSync(path.join(__dirname, '../templates')).forEach((fileName) => {
 function renderTemplate(template, tokens) {
   if (!template in templates) throw new Error(`Template not found: ${template}`);
   let buf = templates[template];
-  Object.keys(tokens).forEach((key) => {
-    const regexp = new RegExp(`{{${key}}}`, 'g');
-    buf = buf.replace(regexp, tokens[key]);
-  });
+  if (tokens) {
+    Object.keys(tokens).forEach((key) => {
+      const regexp = new RegExp(`{{${key}}}`, 'g');
+      buf = buf.replace(regexp, tokens[key]);
+    });
+  }
   return buf;
 };
 

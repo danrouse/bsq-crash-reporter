@@ -8,7 +8,9 @@ function cacheMiddleware(req, res, next) {
   if (cached) return res.send(cached);
   res.sendResponse = res.send;
   res.send = (contents) => {
-    memoryCache.put(key, contents, ITS_BEEN__ONE_WEEK_SINCE_YOU_LOOKED_AT_ME);
+    if (res.statusCode === 200) {
+      memoryCache.put(key, contents, ITS_BEEN__ONE_WEEK_SINCE_YOU_LOOKED_AT_ME);
+    }
     res.sendResponse(contents);
   };
   next();
@@ -17,4 +19,5 @@ function cacheMiddleware(req, res, next) {
 module.exports = {
   cacheMiddleware,
   invalidateCache: memoryCache.del,
+  clearCache: memoryCache.clear,
 };
