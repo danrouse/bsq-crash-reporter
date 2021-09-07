@@ -5,8 +5,8 @@ const express = require('express');
 const fileUpload = require('express-fileupload');
 const { Firestore } = require('@google-cloud/firestore');
 const { gzip, ungzip } = require('node-gzip');
-const PasswordGen = require('passwordgen');
 const ndkStack = require('./util/ndk-stack');
+const generateReadableId = require('./util/generate-readable-id');
 const { renderTemplate, renderPage } = require('./util/templates');
 const { cacheMiddleware, invalidateCache, clearCache } = require('./util/cache-middleware');
 const { getTombstoneDetails } = require('./util/tombstone-parser');
@@ -14,7 +14,6 @@ const { getTombstoneDetails } = require('./util/tombstone-parser');
 const PORT = process.env.PORT || 3000;
 
 const app = express();
-const passwordGen = new PasswordGen();
 const firestore = new Firestore({
   projectId: 'bsq-crash-reporter',
   keyFilename: './secrets/firestore-key.json',
@@ -39,7 +38,7 @@ app.post('/upload-tombstone', async (req, res) => {
     const details = getTombstoneDetails(req.files.tombstone.data.toString());
     const ndkStackResult = await ndkStack(req.files.tombstone.data);
     const compressedLog = await gzip(ndkStackResult + details.appendToBacktrace);
-    const readableId = passwordGen.phrase(3, { symbols: false, separator: '-' });
+    const readableId = generateReadableId();
 
     // Return an id to the client before doing slow remote ops
     res.status(201).send(readableId);
@@ -109,14 +108,26 @@ app.get('/tombstones/:id', cacheMiddleware, async (req, res) => {
   );
 });
 
-function renderSearchResultsPage(query, search, searchType) {
+const ignoreLibsInBacktrace = ['libCrashMod', 'libanxiety'];
+async function renderSearchResultsPage(query, search, searchType) {
+  const results = await Promise.all(query.docs.map(async (doc) => {
+    const data = doc.data();
+    const uncompressedLog = (await ungzip(data.log)).toString();
+    return {
+      ...data,
+      uncompressedLog,
+    };
+  }));
+  const filteredResults = results.filter((row) => {
+    return !ignoreLibsInBacktrace.filter((ignoredLib) => ignoredLib !== search).some((ignoredLib) =>
+      row.backtraceRefs.includes(ignoredLib));
+  });
   return renderPage('listing', `${search} (${searchType})`, {
     search,
     searchType,
     results: query.empty
       ? '<li>No results found</li>'
-      : query.docs.map((doc) => {
-        const data = doc.data();
+      : filteredResults.map((data) => {
         const buildIdIndex = data[`${searchType}Refs`].indexOf(search);
         const timestamp = new Date(data.time).toISOString();
         return renderTemplate('listing-item', {
@@ -130,12 +141,12 @@ function renderSearchResultsPage(query, search, searchType) {
 
 app.get('/backtraces/:libName', cacheMiddleware, async (req, res) => {
   const query = await tombstonesCollection.where('backtraceRefs', 'array-contains', req.params.libName).get();
-  res.status(200).send(renderSearchResultsPage(query, req.params.libName, 'backtrace'));
+  res.status(200).send(await renderSearchResultsPage(query, req.params.libName, 'backtrace'));
 });
 
 app.get('/libs/:libName', cacheMiddleware, async (req, res) => {
   const query = await tombstonesCollection.where('memoryRefs', 'array-contains', req.params.libName).get();
-  res.status(200).send(renderSearchResultsPage(query, req.params.libName, 'memory'));
+  res.status(200).send(await renderSearchResultsPage(query, req.params.libName, 'memory'));
 });
 
 app.get('/', cacheMiddleware, async (req, res) => {
