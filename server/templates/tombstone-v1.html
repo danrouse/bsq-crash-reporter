@@ -1,0 +1,29 @@
+<div class="container">
+  <h2 class="row">Crash Log {{id}}</h2>
+  <dl class="row meta">
+    <dt>Received at</dt><dd><time datetime="{{time}}">{{time}}</time></dd>
+    <dt>Game Version </dt><dd>{{gameVersion}}</dd>
+    <dt>OS </dt><dd>{{operatingSystem}}</dd>
+    <dt>UID </dt><dd>{{deviceUniqueId}}</dd>
+  </dl>
+  <div class="row references">
+    <div>
+      <h3>Loaded mods</h3>
+      <ul class="modlist">
+        {{memoryRefs}}
+      </ul>
+    </div>
+    <div>
+      <h3>Mods found in backtrace</h3>
+      <ul class="modlist">
+        {{backtraceRefs}}
+      </ul>
+    </div>
+  </div>
+  <div class="row logs">
+    <h3>Backtrace</h3>
+    <p class="signal-info">{{signalInfo}}</p>
+    <div class="log">{{backtrace}}</div>
+  </div>
+</div>
+<script>var s=()=>Array.from(document.querySelectorAll('.selected')).forEach(e=>e.classList.remove('selected'))||document.querySelector(`a[name="${location.hash.slice(1)}"]`).classList.add('selected');location.hash.length>2&&s();window.onhashchange=s</script>

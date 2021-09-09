@@ -1,15 +1,15 @@
-const fs = require('fs');
-const http = require('http');
-const https = require('https');
-const express = require('express');
-const fileUpload = require('express-fileupload');
-const { Firestore } = require('@google-cloud/firestore');
-const { gzip, ungzip } = require('node-gzip');
-const ndkStack = require('./util/ndk-stack');
-const generateReadableId = require('./util/generate-readable-id');
-const { renderTemplate, renderPage } = require('./util/templates');
-const { cacheMiddleware, invalidateCache, clearCache } = require('./util/cache-middleware');
-const { getTombstoneDetails } = require('./util/tombstone-parser');
+import fs from 'fs';
+import http from 'http';
+import https from 'https';
+import express from 'express';
+import fileUpload from 'express-fileupload';
+import { Firestore } from '@google-cloud/firestore';
+import { gzip, ungzip } from 'node-gzip';
+import ndkStack from './util/ndk-stack';
+import generateReadableId from './util/generate-readable-id';
+import { renderTemplate, renderPage } from './util/templates';
+import { cacheMiddleware, invalidateCache, clearCache } from './util/cache-middleware';
+import { getTombstoneDetails } from './util/tombstone-parser';
 
 const PORT = process.env.PORT || 3000;
 
@@ -31,10 +31,56 @@ app.use(fileUpload({
 }));
 // TODO: Default error handler for prettier error output
 
+app.post('/upload-crash-details', async (req, res) => {
+  const readableId = generateReadableId();
+  let compressedLog;
+  if (req.body.backtrace) {
+    const ndkStackResult = await ndkStack(Buffer.from(req.body.backtrace, 'utf-8'));
+    compressedLog = await gzip(ndkStackResult);
+  }
+
+  res.status(201).send(readableId);
+
+  const backtraceRefs: string[] = (req.body.backtraceLibs || '').split('\n');
+  const memoryRefs: string[] = (req.body.memoryLibs || '').split('\n');
+  
+  const record = tombstonesCollection.doc();
+  const fields: TombstoneV2 = {
+    v: 2,
+    readableId,
+    time: Date.now(),
+    version: req.body.gameVersion || '',
+    uid: req.body.deviceUniqueIdentifier || '',
+    os: req.body.operatingSystem || '',
+    prevScene: req.body.prevSceneName || '',
+    nextScene: req.body.nextSceneName || '',
+    sceneTime: req.body.secondsInScene || '',
+    rsp: req.body.registerSP || '',
+    rlr: req.body.registerLR || '',
+    rpc: req.body.registerPC || '',
+    sig: req.body.signal || '',
+    faddr: req.body.faultAddress || '',
+    backtraceRefs,
+    memoryRefs,
+    backtraceRefIds: (req.body.backtraceLibBuildIds || '').split('\n'),
+    memoryRefIds: (req.body.memoryLibBuildIds || '').split('\n'),
+    logcat: req.body.log || '',
+    backtrace: compressedLog || '',
+  };
+  console.log('Saving fields with serialized size of', JSON.stringify(fields).length);
+  await record.set(fields);
+  console.info(`Saved tombstone to Firestore with id ${record.id}`);    
+
+  backtraceRefs.forEach((libName) => invalidateCache(`backtraces/${libName}`));
+  memoryRefs.forEach((libName) => invalidateCache(`libs/${libName}`));
+  invalidateCache('/');
+});
+
 app.post('/upload-tombstone', async (req, res) => {
-  if (req.files.tombstone) {
+  if (req.files && req.files.tombstone) {
     console.log('Received tombstone...');
 
+    if (Array.isArray(req.files.tombstone)) req.files.tombstone = req.files.tombstone[0];
     const details = getTombstoneDetails(req.files.tombstone.data.toString());
     const ndkStackResult = await ndkStack(req.files.tombstone.data);
     const compressedLog = await gzip(ndkStackResult + details.appendToBacktrace);
@@ -44,7 +90,7 @@ app.post('/upload-tombstone', async (req, res) => {
     res.status(201).send(readableId);
 
     const record = tombstonesCollection.doc();
-    const fields = {
+    const fields: TombstoneV1 = {
       readableId,
       version: req.body.version || '<empty>',
       uid: req.body.uid || '<empty>',
@@ -70,20 +116,55 @@ app.post('/upload-tombstone', async (req, res) => {
   res.status(418).send('Error: A tombstone must be included in the request');
 });
 
+// TODO: handle new format tombstone data
 app.get('/tombstones/:id', cacheMiddleware, async (req, res) => {
   const query = await tombstonesCollection.where('readableId', '==', req.params.id).get();
   if (query.empty) return res.status(404).send('Not Found');
-
-  const data = query.docs[0].data();
-  let uncompressedLog;
-  try {
-    uncompressedLog = (await ungzip(data.log)).toString();
-  } catch(err) {
-    uncompressedLog = data.log;
-  }
-
-  res.status(200).send(
-    renderPage('tombstone', `Crash Log ${req.params.id}`, {
+  const rawData = query.docs[0].data();
+  
+  let page; 
+  if (rawData.v && rawData.v === 2) {
+    const data = rawData as TombstoneV2;
+    const uncompressedLog = (await ungzip(data.backtrace)).toString();
+    page = renderPage('tombstone-v2', `Crash Log ${req.params.id}`, {
+      id: req.params.id,
+      time: new Date(data.time).toISOString(),
+      gameVersion: data.version || '<empty>',
+      deviceUniqueId: data.uid || '<empty>',
+      operatingSystem: data.os || '<empty>',
+      prevSceneName: data.prevScene || '<empty>',
+      nextSceneName: data.nextScene || '<empty>',
+      secondsInScene: data.sceneTime || '<empty>',
+      registerSP: data.rsp || '<empty>',
+      registerLR: data.rlr || '<empty>',
+      registerPC: data.rpc || '<empty>',
+      signal: data.sig || '<empty>',
+      faultAddress: data.faddr || '<empty>',
+      log: data.logcat || '<no log>',
+      backtrace: uncompressedLog.split('\n').map((line, i) =>
+        `<a name="L${i+1}" href="#L${i+1}">${line}</a>`).join(''),
+      memoryRefs: data.memoryRefs.map((libName, i) =>
+        renderTemplate('tombstone-mod-item', {
+          libName,
+          buildId: data.memoryRefIds[i],
+          searchType: 'libs',
+        })).join(''),
+      backtraceRefs: data.backtraceRefs.map((libName, i) =>
+        renderTemplate('tombstone-mod-item', {
+          libName,
+          buildId: data.backtraceRefIds[i],
+          searchType: 'backtraces',
+        })).join(''),
+    });
+  } else {
+    const data = rawData as TombstoneV1;
+    let uncompressedLog: string;
+    try {
+      uncompressedLog = (await ungzip(data.log)).toString();
+    } catch(err) {
+      uncompressedLog = data.log as string;
+    }
+    page = renderPage('tombstone-v1', `Crash Log ${req.params.id}`, {
       id: req.params.id,
       time: new Date(data.time).toISOString(),
       gameVersion: data.version,
@@ -104,14 +185,20 @@ app.get('/tombstones/:id', cacheMiddleware, async (req, res) => {
           buildId: data.backtraceRefIds[i],
           searchType: 'backtraces',
         })).join(''),
-    })
-  );
+    });
+  }
+
+  res.status(200).send(page);
 });
 
 const ignoreLibsInBacktrace = ['libCrashMod', 'libanxiety'];
-async function renderSearchResultsPage(query, search, searchType) {
+async function renderSearchResultsPage(
+  query: FirebaseFirestore.QuerySnapshot<FirebaseFirestore.DocumentData>,
+  search: string,
+  searchType: 'backtrace' | 'memory'
+) {
   const results = await Promise.all(query.docs.map(async (doc) => {
-    const data = doc.data();
+    const data = doc.data() as TombstoneV1;
     const uncompressedLog = (await ungzip(data.log)).toString();
     return {
       ...data,

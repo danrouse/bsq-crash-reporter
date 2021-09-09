@@ -1,23 +1,21 @@
-const memoryCache = require('memory-cache');
+import memoryCache from 'memory-cache';
+import { Request, Response, NextFunction } from 'express';
 
 const ITS_BEEN__ONE_WEEK_SINCE_YOU_LOOKED_AT_ME = 1000 * 60 * 60 * 24 * 7;
 
-function cacheMiddleware(req, res, next) {
+export function cacheMiddleware(req: Request, res: Response, next: NextFunction) {
   const key = req.originalUrl || req.url;
   const cached = memoryCache.get(key);
   if (cached) return res.send(cached);
-  res.sendResponse = res.send;
+  const origSend = res.send.bind(res);
   res.send = (contents) => {
     if (res.statusCode === 200) {
       memoryCache.put(key, contents, ITS_BEEN__ONE_WEEK_SINCE_YOU_LOOKED_AT_ME);
     }
-    res.sendResponse(contents);
+    return origSend(contents);
   };
   next();
 }
 
-module.exports = {
-  cacheMiddleware,
-  invalidateCache: memoryCache.del,
-  clearCache: memoryCache.clear,
-};
+export const invalidateCache = memoryCache.del;
+export const clearCache = memoryCache.clear;

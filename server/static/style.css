@@ -102,11 +102,9 @@ header {
   }
 }
 h2 {
-  background-image: var(--gradient-red);
   font-size: 48px;
   padding: 10px 16px 6px;
   text-align: center;
-  border-bottom: 4px solid var(--dark-red);
 }
 h3 {
   text-align: center;
@@ -115,9 +113,13 @@ h3 {
 }
 .search-results, .container {
   flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 .results {
-  padding: 0 24px 0 48px;
+  padding: 24px 24px 24px 48px;
+  flex: 1;
+  margin: 0;
 }
 .token {
   background-color: var(--dark-red);
@@ -140,11 +142,9 @@ ul {
 .smol:before { content: '('; }
 .smol:after { content: ')'; }
 .meta {
-  background-image: var(--gradient-navy);
   margin: 0;
   padding: 8px;
   text-align: center;
-  border-bottom: 4px solid var(--dark-navy);
   font-size: 80%;
 }
 .meta dt {
@@ -163,7 +163,6 @@ ul {
 }
 .references {
   display: flex;
-  border-bottom: 4px solid var(--dark-blue);
 }
 .references > div {
   flex: 1;
@@ -175,23 +174,20 @@ ul {
     flex-direction: column;
   }
   .references > div:first-child {
-    border-bottom: 4px solid var(--dark-blue);
   }
 }
 .modlist {
   margin: 0 0 16px;
 }
 .backtrace-container {
-  background-image: var(--gradient-red);
   padding: 0px 12px 20px;
-  border-bottom: 4px solid var(--dark-red);
 }
 .signal-info {
   margin: 4px;
   text-align: center;
   font-size: 90%;
 }
-.backtrace {
+.log {
   background-color: var(--dark-navy);
   color: var(--white);
   overflow: auto;
@@ -202,23 +198,45 @@ ul {
   font-family: monospace;
   padding: 4px 0;
 }
-.backtrace a {
+.log.padded {
+  padding: 4px 8px;
+}
+.log a {
   padding: 0 8px;
   border: none;
   display: block;
 }
-.backtrace a:hover, .backtrace a.selected {
+.log a:hover, .log a.selected {
   color: inherit;
   background-color: var(--light-blue);
 }
-.backtrace a:active, .backtrace a:focus {
+.log a:active, .log a:focus {
   outline: none;
 }
 footer {
-  background-image: var(--gradient-navy);
+  background-image: var(--gradient-blue);
   font-size: 10px;
   padding: 4px 16px;
   color: rgba(255, 255, 255, 0.5);
   text-align: right;
+  border-top: 4px solid var(--dark-blue);
+}
+
+.row:nth-child(3n-2) {
+  background-image: var(--gradient-red);
+  border-top: 4px solid var(--dark-red);
+}
+.row:nth-child(3n-1) {
+  background-image: var(--gradient-navy);
   border-top: 4px solid var(--dark-navy);
+}
+.row:nth-child(3n) {
+  background-image: var(--gradient-blue);
+  border-top: 4px solid var(--dark-blue);
+}
+.row:nth-child(1) {
+  border-top: none;
+}
+.logs {
+  padding-bottom: 16px;
 }

@@ -1,6 +1,6 @@
-const words = require('./wordlist.json');
+import words from './wordlist.json';
 
-module.exports = () => [
+export default () => [
   words[Math.floor(Math.random() * words.length)],
   words[Math.floor(Math.random() * words.length)],
   words[Math.floor(Math.random() * words.length)],

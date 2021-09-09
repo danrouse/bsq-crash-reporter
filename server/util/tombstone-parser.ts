@@ -1,6 +1,6 @@
 const ignoredLibs = ['libc', 'libil2cpp', 'libunity', 'libmain'];
 
-function collectLibReferences(symbols, buildIds, line) {
+function collectLibReferences(symbols: string[], buildIds: string[], line: string) {
   const match = line.match(/\/com\.beatgames\.beatsaber\/files\/([^/\s]+)\.so .*\(BuildId: ([^)]+)\)/);
   if (match && !ignoredLibs.includes(match[1]) && !symbols.includes(match[1])) {
     symbols.push(match[1]);
@@ -8,7 +8,7 @@ function collectLibReferences(symbols, buildIds, line) {
   }
 }
 
-function getTombstoneDetails(tombstoneText) {
+export function getTombstoneDetails(tombstoneText: string) {
   const tombstoneLines = tombstoneText.split('\n');
 
   let appendToBacktrace = '';
@@ -16,8 +16,8 @@ function getTombstoneDetails(tombstoneText) {
   const failedToUnwindIndex = tombstoneLines.indexOf('Failed to unwind');
   const backtraceStart = tombstoneLines.indexOf('backtrace:') + 1;
   const backtraceEnd = tombstoneLines.indexOf('stack:') - 1;
-  const backtraceSymbols = [];
-  const backtraceIds = [];
+  const backtraceSymbols: string[] = [];
+  const backtraceIds: string[] = [];
   if (failedToUnwindIndex === -1) {
     tombstoneLines.slice(backtraceStart, backtraceEnd).forEach(
       collectLibReferences.bind(null, backtraceSymbols, backtraceIds)
@@ -31,8 +31,8 @@ function getTombstoneDetails(tombstoneText) {
   }
 
   const memoryMapStart = tombstoneLines.findIndex((line) => line.startsWith('memory map'));
-  const memoryMapSymbols = [];
-  const memoryMapIds = [];
+  const memoryMapSymbols: string[] = [];
+  const memoryMapIds: string[] = [];
   tombstoneLines.slice(memoryMapStart).forEach(
     collectLibReferences.bind(null, memoryMapSymbols, memoryMapIds)
   );
@@ -49,7 +49,3 @@ function getTombstoneDetails(tombstoneText) {
     appendToBacktrace,
   };
 }
-
-module.exports = {
-  getTombstoneDetails,
-};

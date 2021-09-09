@@ -1,12 +1,15 @@
 <div class="container">
-  <h2>Crash Log {{id}}</h2>
-  <dl class="meta">
+  <h2 class="row">Crash Log {{id}}</h2>
+  <dl class="row meta">
     <dt>Received at</dt><dd><time datetime="{{time}}">{{time}}</time></dd>
     <dt>Game Version </dt><dd>{{gameVersion}}</dd>
     <dt>OS </dt><dd>{{operatingSystem}}</dd>
     <dt>UID </dt><dd>{{deviceUniqueId}}</dd>
+    <dt>Previous Scene</dt><dd>{{prevSceneName}}</dd>
+    <dt>Next/Current Scene</dt><dd>{{nextSceneName}}</dd>
+    <dt>Seconds in Scene</dt><dd>{{secondsInScene}}</dd>
   </dl>
-  <div class="references">
+  <div class="row references">
     <div>
       <h3>Loaded mods</h3>
       <ul class="modlist">
@@ -20,10 +23,20 @@
       </ul>
     </div>
   </div>
-  <div class="backtrace-container">
+  <div class="row logs">
     <h3>Backtrace</h3>
-    <p class="signal-info">{{signalInfo}}</p>
-    <div class="backtrace">{{backtrace}}</div>
+    <p class="signal-info">
+      sp {{registerSP}}
+      lr {{registerLR}}
+      pc {{registerPC}}
+      signal {{signal}}
+      fault address {{faultAddress}}
+    </p>
+    <div class="log">{{backtrace}}</div>
+  </div>
+  <div class="row logs">
+    <h3>Log</h3>
+    <div class="log padded">{{log}}</div>
   </div>
 </div>
 <script>var s=()=>Array.from(document.querySelectorAll('.selected')).forEach(e=>e.classList.remove('selected'))||document.querySelector(`a[name="${location.hash.slice(1)}"]`).classList.add('selected');location.hash.length>2&&s();window.onhashchange=s</script>

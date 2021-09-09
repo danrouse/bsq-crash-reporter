@@ -5,4 +5,4 @@ const messages = [
   'sc2ad gr8',
 ];
 
-module.exports = () => messages[Math.floor(Math.random() * messages.length)];
+export default () => messages[Math.floor(Math.random() * messages.length)];
