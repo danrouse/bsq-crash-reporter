@@ -4,7 +4,7 @@
   "info": {
     "name": "Crash Reporter",
     "id": "crash-reporter",
-    "version": "1.0.0-rc1",
+    "version": "1.1.0-r1",
     "url": null,
     "additionalData": {}
   },
@@ -21,11 +21,6 @@
     {
       "id": "codegen",
       "versionRange": "^0.13.0",
-      "additionalData": {}
-    },
-    {
-      "id": "questui",
-      "versionRange": "^0.11.0",
       "additionalData": {}
     },
     {

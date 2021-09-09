@@ -6,8 +6,8 @@ while ([string]::IsNullOrEmpty($bspid)) {
 }
 if ($args.Count -eq 0) {
     echo "Start logging!"
-    adb logcat -T "$timestamp" --pid $bspid | Select-String -pattern "(QuestHook|modloader|AndroidRuntime)"
-    # adb logcat -T "$timestamp" --pid $bspid > log.txt#| Select-String -pattern "(crash-reporter)"
+    # adb logcat -T "$timestamp" --pid $bspid | Select-String -pattern "(QuestHook|modloader|AndroidRuntime)"
+    adb logcat -T "$timestamp" --pid $bspid | Select-String -pattern "(crash-reporter)"
 }
 if ($args[0] -eq "--file") {
      echo "Logging and saving to file!"

@@ -1,71 +1,153 @@
+// CRASHERS:
+void (*fuckyou)();
+// fuckyou();
+//
+// (before il2cpp init):
+// auto crashDamnit = il2cpp_functions::domain_get();
+// GlobalNamespace::MainFlowCoordinator::_get__startWithSettings();
+
 #include "main.hpp"
 
-// TODO: This seems like a bad place to store data
-const char* dataFilePath = "/sdcard/Android/data/com.beatgames.beatsaber/files/crash-reporter.txt";
+#include <chrono>
+// Application state to bundle with crash reports
+std::string gameVersion;
+std::string deviceUniqueIdentifier;
+std::string operatingSystem;
+std::string prevSceneName;
+std::string nextSceneName;
+int currentSceneTime;
 
-std::string latestTombstonePath;
-time_t latestTombstoneTime;
-bool hasNewTombstone = false;
-const bool ALWAYS_SHOW_DIALOG = false; // for debugging
+std::unordered_map<int, void (*)(int, struct siginfo*, void*)> signalHandlers;
+void signalHandler(int signal, siginfo_t* inst, void* ctx) {
+    auto context = static_cast<ucontext_t*>(ctx);
+    auto logcatLines = getLogcatLines(25);
+    auto lr = context->uc_mcontext.regs[30];
+    auto backtrace = getBacktraceLines(25,  lr, 0);
+    auto backtraceLibs = getLibraryDataStrings(backtrace.libraries);
+    auto memoryLibs = getLibraryDataStrings(getLoadedMods());
 
-time_t readLatestKnownTombstoneTime() {
-    time_t latest;
-    std::ifstream reader(dataFilePath);
-    if (reader) {
-        reader >> latest;
-        reader.close();
+    getLogger().debug("Handle signal: %d", signal);
+
+    FormFields fields = {
+        {"gameVersion", gameVersion},
+        {"operatingSystem", operatingSystem},
+        {"deviceUniqueIdentifier", deviceUniqueIdentifier},
+        {"prevSceneName", prevSceneName},
+        {"nextSceneName", nextSceneName},
+        {"secondsInScene", std::to_string((int)time(NULL) - currentSceneTime)},
+        {"registerSP", string_format("0x%016llx", context->uc_mcontext.sp)},
+        {"registerLR", string_format("0x%016llx", lr)},
+        {"registerPC", string_format("0x%016llx", context->uc_mcontext.pc)},
+        {"signal", std::to_string(signal)},
+        {"faultAddress", string_format("0x%02llx", context->uc_mcontext.fault_address)},
+        {"memoryLibs", memoryLibs.first},
+        {"memoryLibBuildIds", memoryLibs.second},
+        {"backtraceLibs", backtraceLibs.first},
+        {"backtraceLibBuildIds", backtraceLibs.second},
+        {"backtrace", backtrace.lines},
+        {"log", logcatLines},
+    };
+    for (const auto& field : fields) {
+        getLogger().debug("Upload field: %s: \"%s\"", field.first, field.second.c_str());
     }
-    return latest;
+    auto result = uploadCrashLog(fields);
+    getLogger().debug("response: %d, %s", result.success, result.text.c_str());
+
+    if (signalHandlers[signal]) (*signalHandlers[signal])(signal, inst, ctx);
+    _exit(1); // Time to die, Mr. Bond
 }
 
-void getLatestTombstone(time_t* timestamp, std::string* filename) {
-    static std::string tombstonePathStem = "/sdcard/Android/data/com.beatgames.beatsaber/files/tombstone_0";
-    struct stat statResult;
-    for (int i = 2; i >= 0; i--) {
-        std::string tombstonePath = tombstonePathStem + std::to_string(i);
-        if (stat(tombstonePath.c_str(), &statResult) == 0) {
-            if (!timestamp || statResult.st_mtime > *timestamp) {
-                *timestamp = statResult.st_mtime;
-                *filename = tombstonePath;
-            }
-        }
+void registerSignalHandlers() {
+    struct sigaction newAction;
+    newAction.sa_sigaction = signalHandler;
+    sigemptyset(&newAction.sa_mask);
+    newAction.sa_flags = SA_SIGINFO | SA_ONSTACK | SA_RESTART | SA_RESETHAND;
+    sigaction(SIGILL, &newAction, NULL);
+    sigaction(SIGABRT, &newAction, NULL);
+    sigaction(SIGBUS, &newAction, NULL);
+    sigaction(SIGFPE, &newAction, NULL);
+    sigaction(SIGSEGV, &newAction, NULL);
+    sigaction(SIGPIPE, &newAction, NULL);
+    sigaction(SIGSTKFLT, &newAction, NULL);
+}
+
+MAKE_HOOK(hook_sigaction, nullptr, int, int signum, struct sigaction * act, void * oldact) {
+    if (act && (
+        signum == SIGILL ||
+        signum == SIGABRT ||
+        signum == SIGBUS ||
+        signum == SIGFPE ||
+        signum == SIGSEGV ||
+        signum == SIGPIPE ||
+        signum == SIGSTKFLT
+    )) {
+        signalHandlers[signum] = act->sa_sigaction;
+        return 0;
+    } else {
+        return hook_sigaction(signum, act, oldact);
     }
 }
+
+__attribute__((constructor)) void startup() {
+    registerSignalHandlers();
+    INSTALL_HOOK_DIRECT(getLogger(), hook_sigaction, dlsym(RTLD_DEFAULT, "sigaction"));
+}
+
+extern "C" void init() {}
 
 extern "C" void setup(ModInfo& info) {
     info.id = ID;
     info.version = VERSION;
-
-    time_t latestKnownTombstoneTime = readLatestKnownTombstoneTime();
-    getLogger().debug("Last known tombstone time: %ld", latestKnownTombstoneTime);
-
-    getLatestTombstone(&latestTombstoneTime, &latestTombstonePath);
-    getLogger().debug("Latest tombstone time: %ld - %s", latestTombstoneTime, latestTombstonePath.c_str());
-
-    if (latestKnownTombstoneTime && latestTombstoneTime > latestKnownTombstoneTime) {
-        getLogger().info("A new tombstone was detected, a crash report dialog will be shown");
-        hasNewTombstone = true;
-    }
 }
 
-// TODO: Confirm if this is actually not a terrible place to hook the main menu
-// (On scene transition is more common (and more involved to setup), but I don't know why?)
-MAKE_HOOK_MATCH(MainFlowCoordinator_DidActivate, &GlobalNamespace::MainFlowCoordinator::DidActivate, void, GlobalNamespace::MainFlowCoordinator* self, bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling) {
-    MainFlowCoordinator_DidActivate(self, firstActivation, addedToHierarchy, screenSystemEnabling);
-    if (ALWAYS_SHOW_DIALOG || (firstActivation && addedToHierarchy && hasNewTombstone)) {
-        getLogger().info("Showing crash report dialog");
-        showCrashReportDialog(latestTombstonePath.c_str());
+MAKE_HOOK_MATCH(
+    SceneManager_Internal_ActiveSceneChanged,
+    &UnityEngine::SceneManagement::SceneManager::Internal_ActiveSceneChanged,
+    void,
+    UnityEngine::SceneManagement::Scene prevScene,
+    UnityEngine::SceneManagement::Scene nextScene
+) {
+    currentSceneTime = (int)time(NULL);
+    if (prevScene.IsValid()) {
+        prevSceneName = to_utf8(csstrtostr(prevScene.get_name()));
+    } else {
+        prevSceneName = "";
     }
-    std::ofstream writer(dataFilePath);
-    if (writer) {
-        getLogger().debug("Writing latest tombstone time to %s", dataFilePath);
-        writer << latestTombstoneTime;
-        writer.close();
+    if (nextScene.IsValid()) {
+        nextSceneName = to_utf8(csstrtostr(nextScene.get_name()));
+    } else {
+        nextSceneName = "";
     }
+    SceneManager_Internal_ActiveSceneChanged(prevScene, nextScene);
+}
+
+#include "GlobalNamespace/HealthWarningFlowCoordinator.hpp"
+MAKE_HOOK_MATCH(
+    CrashOnFirstScene,
+    &GlobalNamespace::HealthWarningFlowCoordinator::DidActivate,
+    void,
+    GlobalNamespace::HealthWarningFlowCoordinator* self,
+    bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling
+) {
+    getLogger().debug("crasher called");
+    CrashOnFirstScene(nullptr, firstActivation, addedToHierarchy, screenSystemEnabling);
 }
 
 extern "C" void load() {
     il2cpp_functions::Init();
-    QuestUI::Init();
-    INSTALL_HOOK(getLogger(), MainFlowCoordinator_DidActivate);
+
+    INSTALL_HOOK(getLogger(), SceneManager_Internal_ActiveSceneChanged);
+    INSTALL_HOOK(getLogger(), CrashOnFirstScene);
+
+    gameVersion = to_utf8(csstrtostr(
+        UnityEngine::Application::get_version()
+    ));
+    deviceUniqueIdentifier = to_utf8(csstrtostr(
+        reinterpret_cast<function_ptr_t<Il2CppString*>>(il2cpp_functions::resolve_icall("UnityEngine.SystemInfo::GetDeviceUniqueIdentifier()"))()
+    ));
+    operatingSystem = to_utf8(csstrtostr(
+        reinterpret_cast<function_ptr_t<Il2CppString*>>(il2cpp_functions::resolve_icall("UnityEngine.SystemInfo::GetOperatingSystem()"))()
+    ));
+
+    fuckyou();
 }

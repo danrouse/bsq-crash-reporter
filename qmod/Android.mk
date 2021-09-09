@@ -37,18 +37,6 @@ LOCAL_MODULE := codegen_0_13_0
 LOCAL_EXPORT_C_INCLUDES := extern/codegen
 LOCAL_SRC_FILES := extern/libcodegen_0_13_0.so
 include $(PREBUILT_SHARED_LIBRARY)
-# Creating prebuilt for dependency: questui - version: 0.11.0
-include $(CLEAR_VARS)
-LOCAL_MODULE := questui
-LOCAL_EXPORT_C_INCLUDES := extern/questui
-LOCAL_SRC_FILES := extern/libquestui.so
-include $(PREBUILT_SHARED_LIBRARY)
-# Creating prebuilt for dependency: custom-types - version: 0.12.7
-include $(CLEAR_VARS)
-LOCAL_MODULE := custom-types
-LOCAL_EXPORT_C_INCLUDES := extern/custom-types
-LOCAL_SRC_FILES := extern/libcustom-types.so
-include $(PREBUILT_SHARED_LIBRARY)
 # Creating prebuilt for dependency: libcurl - version: 7.78.0
 include $(CLEAR_VARS)
 LOCAL_MODULE := curl
@@ -64,11 +52,9 @@ LOCAL_SRC_FILES += $(call rwildcard,extern/beatsaber-hook/src/inline-hook,*.c)
 LOCAL_SHARED_LIBRARIES += modloader
 LOCAL_SHARED_LIBRARIES += beatsaber-hook_2_3_0
 LOCAL_SHARED_LIBRARIES += codegen_0_13_0
-LOCAL_SHARED_LIBRARIES += questui
-LOCAL_SHARED_LIBRARIES += custom-types
 LOCAL_STATIC_LIBRARIES += curl
 LOCAL_LDLIBS += -llog -lz
-LOCAL_CFLAGS += -I'extern/libil2cpp/il2cpp/libil2cpp' -DID='"crash-reporter"' -DVERSION='"1.0.0-rc1"' -I'./shared' -I'./extern' -isystem'extern/codegen/include'
+LOCAL_CFLAGS += -I'extern/libil2cpp/il2cpp/libil2cpp' -DID='"crash-reporter"' -DVERSION='"1.1.0-r1"' -I'./shared' -I'./extern' -isystem'extern/codegen/include'
 LOCAL_CPPFLAGS += -std=c++2a
 LOCAL_C_INCLUDES += ./include ./src
 include $(BUILD_SHARED_LIBRARY)
