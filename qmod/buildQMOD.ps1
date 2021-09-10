@@ -6,8 +6,8 @@ if (-not ($PSVersionTable.PSEdition -eq "Core")) {
     $buildScript += ".cmd"
 }
 
-$ArchiveName = "crash-reporter_v1.1.0-r1.qmod"
-$TempArchiveName = "crash-reporter_v1.1.0-r1.qmod.zip"
+$ArchiveName = "crash-reporter_v1.1.0-b1.qmod"
+$TempArchiveName = "crash-reporter_v1.1.0-b1.qmod.zip"
 
 & $buildScript NDK_PROJECT_PATH=$PSScriptRoot APP_BUILD_SCRIPT=$PSScriptRoot/Android.mk NDK_APPLICATION_MK=$PSScriptRoot/Application.mk
 Compress-Archive -Path "./libs/arm64-v8a/libcrash-reporter.so", `
