@@ -1,8 +1,8 @@
 #include "upload.hpp"
 
 // TODO: Is there a way to inject the host URI at build-time?
-// const char* URL_POST_CRASH_LOG = "https://mods.quest/upload-tombstone";
-const char* URL_POST_CRASH_LOG = "http://192.168.1.16:3000/upload-crash-details";
+const char* URL_POST_CRASH_LOG = "https://mods.quest/upload-crash-details";
+// const char* URL_POST_CRASH_LOG = "http://192.168.1.16:3000/upload-crash-details";
 
 static size_t cURLWriteCallback(void *contents, size_t size, size_t nmemb, void *userp) {
     ((std::string*)userp)->append((char*)contents, size* nmemb);

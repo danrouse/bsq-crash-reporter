@@ -19,11 +19,6 @@
       }
     },
     {
-      "id": "codegen",
-      "versionRange": "^0.13.0",
-      "additionalData": {}
-    },
-    {
       "id": "libcurl",
       "versionRange": "*",
       "additionalData": {}

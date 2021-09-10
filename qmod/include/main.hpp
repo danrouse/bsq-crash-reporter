@@ -16,8 +16,3 @@
 #include "read-memory-map.hpp"
 #include "elf-build-id.hpp"
 #include "upload.hpp"
-
-#include "GlobalNamespace/MainFlowCoordinator.hpp"
-#include "UnityEngine/SceneManagement/SceneManager.hpp"
-#include "UnityEngine/SceneManagement/Scene.hpp"
-#include "UnityEngine/Application.hpp"

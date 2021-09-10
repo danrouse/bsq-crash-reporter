@@ -15,7 +15,7 @@ std::string deviceUniqueIdentifier;
 std::string operatingSystem;
 std::string prevSceneName;
 std::string nextSceneName;
-int currentSceneTime;
+int currentSceneTime = 0;
 
 std::unordered_map<int, void (*)(int, struct siginfo*, void*)> signalHandlers;
 void signalHandler(int signal, siginfo_t* inst, void* ctx) {
@@ -34,7 +34,7 @@ void signalHandler(int signal, siginfo_t* inst, void* ctx) {
         {"deviceUniqueIdentifier", deviceUniqueIdentifier},
         {"prevSceneName", prevSceneName},
         {"nextSceneName", nextSceneName},
-        {"secondsInScene", std::to_string((int)time(NULL) - currentSceneTime)},
+        {"secondsInScene", currentSceneTime ? std::to_string((int)time(NULL) - currentSceneTime) : "0"},
         {"registerSP", string_format("0x%016llx", context->uc_mcontext.sp)},
         {"registerLR", string_format("0x%016llx", lr)},
         {"registerPC", string_format("0x%016llx", context->uc_mcontext.pc)},
@@ -50,8 +50,8 @@ void signalHandler(int signal, siginfo_t* inst, void* ctx) {
     for (const auto& field : fields) {
         getLogger().debug("Upload field: %s: \"%s\"", field.first, field.second.c_str());
     }
-    auto result = uploadCrashLog(fields);
-    getLogger().debug("response: %d, %s", result.success, result.text.c_str());
+    // auto result = uploadCrashLog(fields);
+    // getLogger().debug("response: %d, %s", result.success, result.text.c_str());
 
     if (signalHandlers[signal]) (*signalHandlers[signal])(signal, inst, ctx);
     _exit(1); // Time to die, Mr. Bond
@@ -100,36 +100,37 @@ extern "C" void setup(ModInfo& info) {
     info.version = VERSION;
 }
 
-MAKE_HOOK_MATCH(
+MAKE_HOOK_FIND_CLASS_UNSAFE_STATIC(
     SceneManager_Internal_ActiveSceneChanged,
-    &UnityEngine::SceneManagement::SceneManager::Internal_ActiveSceneChanged,
+    "UnityEngine.SceneManagement", "SceneManager", "Internal_ActiveSceneChanged",
     void,
-    UnityEngine::SceneManagement::Scene prevScene,
-    UnityEngine::SceneManagement::Scene nextScene
+    Il2CppObject* prevScene,
+    Il2CppObject* nextScene
 ) {
-    currentSceneTime = (int)time(NULL);
-    if (prevScene.IsValid()) {
-        prevSceneName = to_utf8(csstrtostr(prevScene.get_name()));
+    static auto IsValid = il2cpp_utils::FindMethod("UnityEngine.SceneManagement", "Scene", "IsValid");
+    static auto GetName = il2cpp_utils::FindMethod("UnityEngine.SceneManagement", "Scene", "get_name");
+    if (il2cpp_utils::RunMethod<bool>(&prevScene, IsValid).value()) {
+        prevSceneName = to_utf8(csstrtostr(il2cpp_utils::RunMethod<Il2CppString*>(&prevScene, GetName).value()));
     } else {
         prevSceneName = "";
     }
-    if (nextScene.IsValid()) {
-        nextSceneName = to_utf8(csstrtostr(nextScene.get_name()));
+    if (il2cpp_utils::RunMethod<bool>(&nextScene, IsValid).value()) {
+        nextSceneName = to_utf8(csstrtostr(il2cpp_utils::RunMethod<Il2CppString*>(&nextScene, GetName).value()));
     } else {
         nextSceneName = "";
     }
+    currentSceneTime = (int)time(NULL);
     SceneManager_Internal_ActiveSceneChanged(prevScene, nextScene);
 }
 
-#include "GlobalNamespace/HealthWarningFlowCoordinator.hpp"
-MAKE_HOOK_MATCH(
+MAKE_HOOK_FIND_CLASS_INSTANCE(
     CrashOnFirstScene,
-    &GlobalNamespace::HealthWarningFlowCoordinator::DidActivate,
+    "", "HealthWarningFlowCoordinator", "DidActivate",
     void,
-    GlobalNamespace::HealthWarningFlowCoordinator* self,
+    Il2CppObject* self,
     bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling
 ) {
-    getLogger().debug("crasher called");
+    getLogger().debug("calling orig hook with a nullptr what could go wrong?");
     CrashOnFirstScene(nullptr, firstActivation, addedToHierarchy, screenSystemEnabling);
 }
 
@@ -140,7 +141,7 @@ extern "C" void load() {
     INSTALL_HOOK(getLogger(), CrashOnFirstScene);
 
     gameVersion = to_utf8(csstrtostr(
-        UnityEngine::Application::get_version()
+        il2cpp_utils::RunMethod<Il2CppString*>(nullptr, il2cpp_utils::FindMethod("UnityEngine", "Application", "get_version")).value()
     ));
     deviceUniqueIdentifier = to_utf8(csstrtostr(
         reinterpret_cast<function_ptr_t<Il2CppString*>>(il2cpp_functions::resolve_icall("UnityEngine.SystemInfo::GetDeviceUniqueIdentifier()"))()
@@ -149,5 +150,5 @@ extern "C" void load() {
         reinterpret_cast<function_ptr_t<Il2CppString*>>(il2cpp_functions::resolve_icall("UnityEngine.SystemInfo::GetOperatingSystem()"))()
     ));
 
-    fuckyou();
+    // fuckyou();
 }
